@@ -1,5 +1,31 @@
 # Changelog
 
+## 1.0.0
+
+First stable release.
+
+OwnDPS shows your own DPS or HPS, your rank and a trend indicator in a single line, for example `1. 495.1k DPS ▲`. All numbers come from Blizzard's damage meter API (`C_DamageMeter`). The combat log is not used, and OwnDPS also works when Blizzard's own damage meter window is turned off.
+
+### Features
+
+- **One line:** rank, optional character name (optionally in class color), value (`123.4k`, `12.3M`, `1.2B`, whole numbers below 1,000) and unit. Every element except the value can be hidden.
+- **DPS or HPS:** rank, value and trend always refer to the selected mode.
+- **Data source:** automatic (current fight in combat, overall otherwise), always current fight, or always overall.
+- **Trend indicator** (in combat only): arrow, boxes (side by side or stacked), bars, or off. Adjustable time window (0.5 to 30 seconds), tolerance (0.1 to 20 %), colors and size.
+- **Appearance:** font (LibSharedMedia), font size, outline, shadow, colors per element, optional background and border, scale and opacity.
+- **Edit Mode:** move the display in WoW's Edit Mode; the position is saved per layout. The Edit Mode dialog has a scale slider and a *More settings* button. An optional lock prevents moving. While editing, a sample line with the trend indicator is shown.
+- **Visibility:** always, only in instances, only in a group, or only in combat; optionally hidden in vehicles; always hidden during pet battles. The display is hidden while no value is available.
+- **Settings:** *Settings > AddOns > OwnDPS* or `/owndps`. All changes apply immediately.
+- **Profiles:** settings are stored per character; copy them from another character or reset them.
+- **Slash commands** for the main options, see `/owndps help`.
+- **Debug mode** (off by default) that writes a log to the SavedVariables.
+- **Languages:** English and German.
+
+### Changes since 0.5.0-beta.1
+
+- The logo is no longer part of the addon package (download size about 180 KB instead of 2.2 MB).
+- The version shown in the addon list is now taken from the release tag.
+
 ## 0.5.0-beta.1 (2026-09-23)
 
 Release-Kandidat. Alle Meilensteine aus CLAUDE.md sind umgesetzt und im Spiel getestet (bis 0.4.1-alpha.1).

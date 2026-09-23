@@ -1,5 +1,7 @@
 # OwnDPS
 
+<p align="center"><img src="docs/owndps_logo.png" alt="OwnDPS logo" width="256"></p>
+
 World of Warcraft addon (Retail 12.1, Midnight) that shows your own DPS or HPS, your rank and a trend indicator in a single line:
 
 ```
