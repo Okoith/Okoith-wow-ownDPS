@@ -238,7 +238,8 @@ local function buildOptions()
       spacer2 = { type = "description", order = 26, name = "" },
       scale = {
         type = "range", order = 27, name = L["OPT_SCALE"], min = 0.5, max = 3, step = 0.05, isPercent = true,
-        arg = { "scale" }, get = get, set = set,
+        arg = { "scale" }, get = get,
+        set = function(info, value) set(info, ns.RoundScale(value)) end,
       },
       alpha = {
         type = "range", order = 28, name = L["OPT_ALPHA"], min = 0.1, max = 1, step = 0.05, isPercent = true,
@@ -350,4 +351,31 @@ function Options:Open()
     return false
   end
   return true
+end
+
+local function editModeShown()
+  if not EditModeManagerFrame then return "missing" end
+  local ok, shown = pcall(EditModeManagerFrame.IsShown, EditModeManagerFrame)
+  return ok and shown or "error"
+end
+
+-- Eigenständiges AceConfigDialog-Fenster, für den Button im Bearbeitungsmodus.
+-- Settings.OpenToCategory lief dort ohne Fehler, zeigte aber kein Fenster (Test 0.4.0-alpha.1).
+-- Das AceGUI-Fenster liegt in der Ebene FULLSCREEN_DIALOG, der Bearbeitungsmodus in DIALOG.
+function Options:OpenStandalone()
+  if not AceConfigDialog then return false end
+  local ok, err = pcall(AceConfigDialog.Open, AceConfigDialog, ADDON_NAME)
+  local openFrame = AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[ADDON_NAME]
+  local okShown, frameShown = false, nil
+  if openFrame and openFrame.frame then
+    okShown, frameShown = pcall(openFrame.frame.IsShown, openFrame.frame)
+  end
+  ns.Debug:Add("optionsStandalone", {
+    ok = ok,
+    err = err,
+    editModeShown = editModeShown(),
+    frameShown = okShown and frameShown or false,
+  })
+  if not ok then ns.Debug:Error("AceConfigDialog:Open", err) end
+  return ok
 end

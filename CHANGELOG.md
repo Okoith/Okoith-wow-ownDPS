@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.1-alpha.1 (2026-09-23)
+
+Korrekturen aus dem Test von 0.4.0-alpha.1.
+
+- Behoben: Der Button „Weitere Einstellungen“ im Bearbeitungsmodus öffnete kein Fenster. Er öffnet das Menü jetzt als eigenständiges Fenster (`AceConfigDialog:Open`). `/owndps` und der Eintrag unter AddOns bleiben unverändert.
+- Debug-Log: Eintrag `optionsStandalone` mit Ergebnis, ob das Fenster sichtbar ist und ob der Bearbeitungsmodus (`EditModeManagerFrame`) offen ist
+- Behoben: Der Skalierungs-Slider im Bearbeitungsmodus zeigte Werte wie `1.7000000476837`. Anzeige jetzt mit zwei Nachkommastellen, gespeichert wird auf 0,01 gerundet (auch im Menü)
+
 ## 0.4.0-alpha.1 (2026-09-23)
 
 Meilenstein 4: Bearbeitungsmodus.

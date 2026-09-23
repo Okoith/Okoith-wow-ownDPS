@@ -64,6 +64,11 @@ ns.defaults = {
   },
 }
 
+-- Skalierung auf 0,01 runden (Slider liefern Werte wie 1.7000000476837)
+function ns.RoundScale(value)
+  return math.floor(value * 100 + 0.5) / 100
+end
+
 local function Print(msg)
   print("|cff33ff99OwnDPS|r: " .. msg)
 end
