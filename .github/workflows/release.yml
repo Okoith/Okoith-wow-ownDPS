@@ -18,8 +18,10 @@ jobs:
     env:
       # vom Workflow bereitgestellt, muss nicht als Secret angelegt werden
       GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      # später für CurseForge (Secret im Repo anlegen, Projekt-ID in der TOC eintragen):
-      # CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+      # CurseForge: Der Packager lädt nur hoch, wenn Token UND Projekt-ID gesetzt sind
+      # (release.sh, upload_curseforge). Ohne Secret ist der Wert leer, dann entsteht
+      # weiterhin nur das GitHub-Release. Einrichtung siehe README, Abschnitt Releases.
+      CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
 
     steps:
       - name: Clone project

@@ -50,7 +50,7 @@ local EMPTY_TEXT = "-"
 local MEDIA = "Interface\\AddOns\\" .. ADDON_NAME .. "\\media\\"
 local BAR_TEXTURE = "Interface\\Buttons\\WHITE8x8"
 
-local frame, text, moveBg
+local frame, text
 local bgTex, borderTop, borderBottom, borderLeft, borderRight
 local bgRightAnchor      -- Region, an deren rechtem Rand Hintergrund und Rahmen enden
 local trendHolder
@@ -92,14 +92,14 @@ local function buildFormat(p, rank)
   return table.concat(parts, " "), withRank
 end
 
-local function savePosition()
-  local point, _, relPoint, x, y = frame:GetPoint(1)
-  local pos = ns.db.profile.position
-  pos.point, pos.relPoint, pos.x, pos.y = point, relPoint, x, y
+function Display:GetFrame()
+  return frame
 end
 
+-- Position des aktiven Bearbeitungsmodus-Layouts (EditMode.lua), sonst Profil-Position
 function Display:ApplyPosition()
-  local pos = ns.db.profile.position
+  if not frame then return end
+  local pos = ns.EditMode:GetPosition()
   frame:ClearAllPoints()
   frame:SetPoint(pos.point or "CENTER", UIParent, pos.relPoint or pos.point or "CENTER", pos.x or 0, pos.y or 0)
 end
@@ -169,25 +169,14 @@ end
 function Display:Create()
   if frame then return end
 
+  -- Feste Größe, verankert an UIParent: LibEditMode rechnet beim Verschieben mit
+  -- GetLeft/GetRight dieses Frames, deshalb darf er nicht an der (im Kampf geheimen)
+  -- Textbreite hängen.
   frame = CreateFrame("Frame", "OwnDPSFrame", UIParent)
   frame:SetSize(160, 22)
   frame:SetFrameStrata("MEDIUM")
   frame:SetClampedToScreen(true)
-  frame:SetMovable(true)
   frame:EnableMouse(false)
-  frame:SetScript("OnDragStart", function(self)
-    if Display.moving then self:StartMoving() end
-  end)
-  frame:SetScript("OnDragStop", function(self)
-    self:StopMovingOrSizing()
-    self:SetUserPlaced(false)
-    savePosition()
-  end)
-
-  moveBg = frame:CreateTexture(nil, "BACKGROUND")
-  moveBg:SetAllPoints()
-  moveBg:SetColorTexture(0.1, 0.4, 0.8, 0.4)
-  moveBg:Hide()
 
   text = frame:CreateFontString(nil, "OVERLAY")
   text:SetPoint("LEFT", frame, "LEFT", 4, 0)
@@ -211,38 +200,69 @@ function Display:Create()
   self:CreateTrend()
   self:ApplySettings()
   text:SetText(EMPTY_TEXT)
-  self:RegisterVisibility()
+  self:UpdateVisibility()
 end
 
--- Im Haustierkampf immer ausblenden (SPEC Abschnitt 5, getestet).
--- Weitere Sichtbarkeitsregeln folgen in Meilenstein 5.
-function Display:RegisterVisibility()
-  if self.visibilityRegistered then return true end
-  local ok, err = pcall(RegisterStateDriver, frame, "visibility", "[petbattle] hide; show")
+---------------------------------------------------------------------------
+-- Sichtbarkeit (SPEC Abschnitt 5) über den State Driver "visibility".
+-- Haustierkampf immer aus (getestet), Fahrzeug optional. Für Instanzen gibt es
+-- keine Macro-Bedingung (warcraft.wiki.gg, Macro conditionals), daher wird
+-- IsInInstance() bei Zonenwechseln ausgewertet und der Treiber neu gesetzt.
+-- RegisterStateDriver setzt Attribute am geschützten SecureStateDriverManager und
+-- wird deshalb nie im Kampf aufgerufen, sondern bis Kampfende zurückgestellt.
+---------------------------------------------------------------------------
+
+local function inInstance()
+  local ok, isIn = pcall(IsInInstance)
+  return ok and isIn and true or false
+end
+
+function Display:BuildVisibilityMacro()
+  if self.editMode then return "show" end   -- im Bearbeitungsmodus immer sichtbar
+  local p = ns.db.profile
+  local parts = { "[petbattle] hide" }
+  if p.hideInVehicle then parts[#parts + 1] = "[vehicleui] hide" end
+  local mode = p.visibility
+  if mode == "combat" then
+    parts[#parts + 1] = "[combat] show"
+    parts[#parts + 1] = "hide"
+  elseif mode == "group" then
+    parts[#parts + 1] = "[group] show"
+    parts[#parts + 1] = "hide"
+  elseif mode == "instance" then
+    parts[#parts + 1] = inInstance() and "show" or "hide"
+  else
+    parts[#parts + 1] = "show"
+  end
+  return table.concat(parts, "; ")
+end
+
+-- Rückgabe true, wenn der Treiber aktuell ist; false, wenn bis Kampfende verschoben
+function Display:UpdateVisibility()
+  if not frame then return false end
+  local macro = self:BuildVisibilityMacro()
+  if macro == self.visibilityMacro then
+    self.visibilityPending = false
+    return true
+  end
+  if InCombatLockdown() then
+    self.visibilityPending = true
+    return false
+  end
+  local ok, err = pcall(RegisterStateDriver, frame, "visibility", macro)
   if ok then
-    self.visibilityRegistered = true
+    self.visibilityMacro = macro
+    self.visibilityPending = false
+    ns.Debug:Add("visibility", { macro = macro })
   else
     ns.Debug:Error("RegisterStateDriver", err)
   end
   return ok
 end
 
-function Display:SetMoveMode(on)
-  self.moving = on and true or false
-  frame:EnableMouse(self.moving)
-  if self.moving then
-    frame:RegisterForDrag("LeftButton")
-  else
-    frame:RegisterForDrag()
-  end
-  moveBg:SetShown(self.moving)
-end
-
-function Display:ResetPosition()
-  local pos = ns.db.profile.position
-  local def = ns.defaults.profile.position
-  pos.point, pos.relPoint, pos.x, pos.y = def.point, def.relPoint, def.x, def.y
-  self:ApplyPosition()
+function Display:SetEditMode(on)
+  self.editMode = on and true or false
+  self:UpdateVisibility()
 end
 
 local function showEmpty(last)

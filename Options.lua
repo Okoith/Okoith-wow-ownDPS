@@ -34,6 +34,7 @@ local function set(info, value)
   t[k] = value
   ns.Debug:Add("setting", { [table.concat(info.arg, ".")] = value })
   ns:Refresh()
+  ns.EditMode:Refresh()   -- Sperre und Skalierung im Bearbeitungsmodus-Dialog nachziehen
 end
 
 -- wie set, leert zusätzlich die Trend-Historie (Modus, Datenquelle, Zeitfenster)
@@ -129,9 +130,28 @@ local function buildOptions()
         arg = { "showUnit" }, get = get, set = set,
       },
       positionHeader = { type = "header", order = 20, name = L["OPT_POSITION"] },
+      positionNote = { type = "description", order = 21, name = L["OPT_POSITION_NOTE"] },
+      locked = {
+        type = "toggle", order = 22, name = L["OPT_LOCKED"], desc = L["OPT_LOCKED_DESC"],
+        arg = { "locked" }, get = get, set = set,
+      },
       resetPosition = {
-        type = "execute", order = 21, name = L["OPT_RESET_POSITION"], desc = L["OPT_RESET_POSITION_DESC"],
-        func = function() ns.Display:ResetPosition() end,
+        type = "execute", order = 23, name = L["OPT_RESET_POSITION"], desc = L["OPT_RESET_POSITION_DESC"],
+        func = function() ns.EditMode:ResetPosition() end,
+      },
+      visibilityHeader = { type = "header", order = 30, name = L["OPT_VISIBILITY"] },
+      visibility = {
+        type = "select", order = 31, name = L["OPT_VISIBILITY"], desc = L["OPT_VISIBILITY_DESC"],
+        values = {
+          always = L["VISIBILITY_ALWAYS"], instance = L["VISIBILITY_INSTANCE"],
+          group = L["VISIBILITY_GROUP"], combat = L["VISIBILITY_COMBAT"],
+        },
+        sorting = { "always", "instance", "group", "combat" },
+        arg = { "visibility" }, get = get, set = set,
+      },
+      hideInVehicle = {
+        type = "toggle", order = 32, name = L["OPT_HIDE_VEHICLE"],
+        arg = { "hideInVehicle" }, get = get, set = set,
       },
       debugHeader = { type = "header", order = 90, name = L["OPT_DEBUG"] },
       debug = {
