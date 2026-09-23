@@ -1,0 +1,26 @@
+# BigWigs Packager, siehe https://github.com/BigWigsMods/packager/wiki/Preparing-the-PackageMeta-File
+package-as: OwnDPS
+
+# Quellen laut Dokumentation der jeweiligen Bibliothek (Stand 2026-09-23):
+# - LibStub, CallbackHandler, LibSharedMedia: WowAce-SVN (Beispiele im Packager-Wiki)
+# - AceDB-3.0: Ace3-README nennt das WowAce-SVN als maßgebliche Quelle für .pkgmeta
+# - LibEditMode: Wiki-Seite "Embedding" von p3lim-wow/LibEditMode
+externals:
+  libs/LibStub:
+    url: https://repos.wowace.com/wow/libstub/trunk
+    tag: 1.0
+  libs/CallbackHandler-1.0: https://repos.wowace.com/wow/callbackhandler/trunk/CallbackHandler-1.0
+  libs/AceDB-3.0: https://repos.wowace.com/wow/ace3/trunk/AceDB-3.0
+  libs/LibSharedMedia-3.0: https://repos.wowace.com/wow/libsharedmedia-3-0/trunk/LibSharedMedia-3.0
+  libs/LibEditMode:
+    url: https://github.com/p3lim-wow/LibEditMode
+    tag: latest
+
+ignore:
+  - docs
+  - CLAUDE.md
+  - SPEC.md
+
+manual-changelog:
+  filename: CHANGELOG.md
+  markup-type: markdown
