@@ -9,6 +9,7 @@ local Display = {}
 ns.Display = Display
 
 local issecret = issecretvalue or function() return false end
+local LSM = LibStub("LibSharedMedia-3.0", true)
 
 -- 123.4k / 12.3M / 1.2B, im Spiel getestet (SPEC Abschnitt 2), auch mit Secret Values
 local ABBREV_OPTS = {
@@ -50,6 +51,8 @@ local MEDIA = "Interface\\AddOns\\" .. ADDON_NAME .. "\\media\\"
 local BAR_TEXTURE = "Interface\\Buttons\\WHITE8x8"
 
 local frame, text, moveBg
+local bgTex, borderTop, borderBottom, borderLeft, borderRight
+local bgRightAnchor      -- Region, an deren rechtem Rand Hintergrund und Rahmen enden
 local trendHolder
 local trendStyles = {}   -- arrow / boxes / bars -> { root, up, down, clips = {...} }
 
@@ -73,7 +76,13 @@ local function buildFormat(p, rank)
   end
   if p.showName then
     local name = UnitName("player") or ""
-    parts[#parts + 1] = colorCode(p.colors.name) .. name:gsub("%%", "%%%%") .. "|r"
+    local color = p.colors.name
+    if p.nameClassColor then
+      local _, class = UnitClass("player")
+      local ok, classColor = pcall(C_ClassColor.GetClassColor, class)
+      if ok and classColor then color = classColor end
+    end
+    parts[#parts + 1] = colorCode(color) .. name:gsub("%%", "%%%%") .. "|r"
   end
   parts[#parts + 1] = colorCode(p.colors.value) .. "%s|r"
   if p.showUnit then
@@ -95,11 +104,54 @@ function Display:ApplyPosition()
   frame:SetPoint(pos.point or "CENTER", UIParent, pos.relPoint or pos.point or "CENTER", pos.x or 0, pos.y or 0)
 end
 
+local function fontPath(name)
+  if LSM and name then
+    local ok, path = pcall(LSM.Fetch, LSM, "font", name)
+    if ok and path then return path end
+  end
+  return STANDARD_TEXT_FONT
+end
+
+-- Schriftart über LibSharedMedia. SetFont liefert laut API-Doku "success";
+-- bei Fehlschlag Standardschrift, damit der Text nie unsichtbar wird.
+local function applyFont(f)
+  local flags = (f.outline ~= "" and f.outline) or nil
+  local ok, success = pcall(text.SetFont, text, fontPath(f.name), f.size, flags)
+  if not (ok and success) then
+    ns.Debug:Error("SetFont", ok and ("failed: " .. tostring(f.name)) or success)
+    text:SetFont(STANDARD_TEXT_FONT, f.size, flags)
+  end
+end
+
+-- Hintergrund und Rahmen: einfache Texturen am Hauptframe, nur über Anker
+-- positioniert. Kein BackdropTemplate, denn dessen SetupTextureCoordinates rechnet
+-- mit GetWidth(), und die Breite des Texts ist im Kampf geheim.
+local BOX_PAD = 4
+
+local function anchorBackground(rightRegion)
+  if bgRightAnchor == rightRegion then return end
+  bgRightAnchor = rightRegion
+  bgTex:ClearAllPoints()
+  bgTex:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
+  bgTex:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 0, 0)
+  bgTex:SetPoint("RIGHT", rightRegion, "RIGHT", BOX_PAD, 0)
+end
+
+local function applyBackground(p)
+  local bg, bc = p.background.color, p.border.color
+  bgTex:SetColorTexture(bg.r, bg.g, bg.b, bg.a)
+  bgTex:SetShown(p.background.show)
+  for _, line in ipairs({ borderTop, borderBottom, borderLeft, borderRight }) do
+    line:SetColorTexture(bc.r, bc.g, bc.b, bc.a)
+    line:SetShown(p.border.show)
+  end
+end
+
 function Display:ApplySettings()
+  if not frame then return end   -- vor PLAYER_LOGIN gibt es noch keinen Frame
   local p = ns.db.profile
   local f = p.font
-  -- Schriftart über LibSharedMedia folgt in Meilenstein 3
-  text:SetFont(STANDARD_TEXT_FONT, f.size, f.outline)
+  applyFont(f)
   if f.shadow then
     text:SetShadowColor(0, 0, 0, 1)
     text:SetShadowOffset(1, -1)
@@ -109,6 +161,7 @@ function Display:ApplySettings()
   frame:SetHeight(math.max(f.size, self:GetTrendSize()) + 8)
   frame:SetScale(p.scale)
   frame:SetAlpha(p.alpha)
+  applyBackground(p)
   self:ApplyPosition()
   self:ApplyTrendSettings()
 end
@@ -140,6 +193,20 @@ function Display:Create()
   text:SetPoint("LEFT", frame, "LEFT", 4, 0)
   text:SetJustifyH("LEFT")
   text:SetWordWrap(false)
+
+  bgTex = frame:CreateTexture(nil, "BACKGROUND", nil, 1)
+  local function line(a1, a2, horizontal)
+    local t = frame:CreateTexture(nil, "BORDER")
+    t:SetPoint(a1, bgTex, a1, 0, 0)
+    t:SetPoint(a2, bgTex, a2, 0, 0)
+    if horizontal then t:SetHeight(1) else t:SetWidth(1) end
+    return t
+  end
+  borderTop = line("TOPLEFT", "TOPRIGHT", true)
+  borderBottom = line("BOTTOMLEFT", "BOTTOMRIGHT", true)
+  borderLeft = line("TOPLEFT", "BOTTOMLEFT", false)
+  borderRight = line("TOPRIGHT", "BOTTOMRIGHT", false)
+  anchorBackground(text)
 
   self:CreateTrend()
   self:ApplySettings()
@@ -293,13 +360,12 @@ function Display:CreateTrend()
   arrow.downClip:SetPoint("CENTER", arrow.root, "CENTER", 0, 0)
   trendStyles.arrow = arrow
 
-  -- Kästchen: oben hoch, unten runter, bei "stabil" beide an
+  -- Kästchen: hoch und runter, bei "stabil" beide an. Position setzt ApplyTrendSettings
+  -- je nach Anordnung (nebeneinander oder übereinander).
   local boxes = { root = CreateFrame("Frame", nil, trendHolder) }
   boxes.root:SetAllPoints()
   boxes.upClip, boxes.up = makeClip(boxes.root, nil, true)
   boxes.downClip, boxes.down = makeClip(boxes.root, nil, true)
-  boxes.upClip:SetPoint("TOP", boxes.root, "TOP", 0, 0)
-  boxes.downClip:SetPoint("BOTTOM", boxes.root, "BOTTOM", 0, 0)
   trendStyles.boxes = boxes
 
   -- Balken: zwei normale Balken, der volle zeigt die Richtung, der andere die Stärke
@@ -324,19 +390,33 @@ function Display:ApplyTrendSettings()
   arrow.up:SetSize(size, size / tolerance)
   arrow.down:SetSize(size, size / tolerance)
 
-  local box = math.max(2, math.floor(size / 2) - 1)
+  -- Kästchen in voller Indikatorgröße
   local boxes = trendStyles.boxes
-  boxes.upClip:SetSize(box, box)
-  boxes.downClip:SetSize(box, box)
-  boxes.up:SetSize(box, box / tolerance)
-  boxes.down:SetSize(box, box / tolerance)
+  boxes.upClip:SetSize(size, size)
+  boxes.downClip:SetSize(size, size)
+  boxes.up:SetSize(size, size / tolerance)
+  boxes.down:SetSize(size, size / tolerance)
+  boxes.upClip:ClearAllPoints()
+  boxes.downClip:ClearAllPoints()
+  local boxesWidth
+  if t.boxLayout == "stack" then
+    -- deckungsgleich wie beim Pfeil; bei "stabil" ist nur die obere Farbe sichtbar
+    boxes.upClip:SetPoint("CENTER", boxes.root, "CENTER", 0, 0)
+    boxes.downClip:SetPoint("CENTER", boxes.root, "CENTER", 0, 0)
+    boxesWidth = size
+  else
+    -- nebeneinander: links hoch, rechts runter, 2 px Abstand
+    boxes.upClip:SetPoint("LEFT", boxes.root, "LEFT", 0, 0)
+    boxes.downClip:SetPoint("LEFT", boxes.upClip, "RIGHT", 2, 0)
+    boxesWidth = size * 2 + 2
+  end
 
   local barWidth = math.max(3, math.floor(size * 0.35 + 0.5))
   local bars = trendStyles.bars
   bars.up:SetSize(barWidth, size)
   bars.down:SetSize(barWidth, size)
 
-  local widths = { arrow = size, boxes = box, bars = barWidth * 2 + 2 }
+  local widths = { arrow = size, boxes = boxesWidth, bars = barWidth * 2 + 2 }
   trendHolder:SetSize(widths[t.style] or 1, size)
 
   local up, down = t.colors.up, t.colors.down
@@ -361,6 +441,7 @@ function Display:RenderTrend(s, prev, hasPrev)
   local st = trendStyles[ns.db.profile.trend.style]   -- nil beim Stil "Aus"
   local visible = st ~= nil and s.inCombat
   trendHolder:SetShown(visible)
+  anchorBackground(visible and trendHolder or text)
   last.trendShown = visible
   last.trendHasPrev = hasPrev
   last.trendSetOk = nil

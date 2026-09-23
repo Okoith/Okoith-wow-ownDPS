@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.3.0-alpha.1 (2026-09-23)
+
+Meilenstein 3: Einstellungsmenü.
+
+- Einstellungsmenü unter Einstellungen > AddOns > OwnDPS (AceConfig-3.0), `/owndps` öffnet es, `/owndps help` zeigt die Befehle
+- Reiter Allgemein: Modus, Datenquelle, Platz/Name/Einheit, Name in Klassenfarbe, Position zurücksetzen, Debugmodus
+- Reiter Darstellung: Schriftart (LibSharedMedia, mit Vorschau über AceGUI-3.0-SharedMediaWidgets), Schriftgröße, Kontur, Schatten, Farben für Platz/Name/Wert/Einheit, Hintergrund (Farbe und Transparenz, standardmäßig aus), Rahmen (an/aus, Farbe), Skalierung, Gesamt-Transparenz
+- Reiter Trend: Stil, Kästchen-Anordnung, Zeitfenster, Toleranz, Indikatorgröße, Farben hoch/runter
+- Reiter Profile (AceDBOptions-3.0): Profil wechseln, „Kopieren von“ anderen Charakteren, Zurücksetzen
+- Alle Änderungen sofort sichtbar, ohne /reload
+- Hintergrund und Rahmen hängen per Anker an Text und Trend-Indikator (keine berechneten Breiten, da `GetStringWidth` im Kampf geheim ist)
+- Trend-Stil Kästchen: neue Option Anordnung „Nebeneinander“ (Standard, links hoch, rechts runter) oder „Übereinander“ (deckungsgleich; bei „stabil“ ist nur die obere Farbe sichtbar), beide in voller Indikatorgröße
+- Neuer Befehl `/owndps boxlayout side|stack`
+
 ## 0.2.0-alpha.1 (2026-09-23)
 
 Meilenstein 2: Trend.

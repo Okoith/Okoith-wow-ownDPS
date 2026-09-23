@@ -10,6 +10,7 @@ local POST_COMBAT_STATUS = 5     -- Sekunden nach Kampfende weiter Status loggen
 ns.VERSION = (C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(ADDON_NAME, "Version")) or "?"
 
 local WHITE = { r = 1, g = 1, b = 1 }
+local LSM = LibStub("LibSharedMedia-3.0", true)
 
 ns.defaults = {
   profile = {
@@ -18,6 +19,7 @@ ns.defaults = {
     showRank = true,
     showName = false,
     showUnit = true,
+    nameClassColor = false,
     colors = {
       rank = WHITE,
       name = WHITE,
@@ -25,15 +27,25 @@ ns.defaults = {
       unit = WHITE,
     },
     font = {
+      name = (LSM and LSM:GetDefault("font")) or "Friz Quadrata TT",   -- LibSharedMedia-Schlüssel
       size = 14,
       outline = "OUTLINE",   -- "" | "OUTLINE" | "THICKOUTLINE"
       shadow = true,
+    },
+    background = {
+      show = false,
+      color = { r = 0, g = 0, b = 0, a = 0.5 },
+    },
+    border = {
+      show = false,
+      color = { r = 0.6, g = 0.6, b = 0.6, a = 1 },
     },
     scale = 1,
     alpha = 1,
     position = { point = "CENTER", relPoint = "CENTER", x = 0, y = -180 },
     trend = {
       style = "arrow",       -- "arrow" | "boxes" | "bars" | "off"
+      boxLayout = "side",    -- Kästchen: "side" (nebeneinander) | "stack" (übereinander)
       window = 3,            -- Sekunden, 0,5 bis 30
       tolerance = 0.01,      -- Anteil (1 %), 0,001 bis 0,2; nur Pfeil und Kästchen
       size = 0,              -- 0 = an die Schriftgröße gekoppelt
@@ -116,6 +128,26 @@ local function safeUpdate()
   local ok, err = pcall(ns.Update, ns)
   if not ok then ns.Debug:Error("Update", err) end
 end
+ns.SafeUpdate = safeUpdate
+
+-- Einstellungen sofort anwenden, ohne /reload
+function ns:Refresh()
+  ns.Display:ApplySettings()
+  safeUpdate()
+end
+
+-- Offenes Einstellungsfenster aktualisieren, wenn sich etwas außerhalb davon ändert
+function ns:NotifyOptions()
+  local registry = LibStub("AceConfigRegistry-3.0", true)
+  if registry then registry:NotifyChange(ADDON_NAME) end
+end
+
+function ns:OnProfileChanged()
+  ns.Data:ClearHistory()
+  ns:Refresh()
+end
+ns.OnProfileCopied = ns.OnProfileChanged
+ns.OnProfileReset = ns.OnProfileChanged
 
 ---------------------------------------------------------------------------
 -- Events
@@ -130,11 +162,21 @@ function handlers.ADDON_LOADED(name)
 
   -- Ohne dritten Parameter legt AceDB ein Profil pro Charakter an ("Name - Realm")
   ns.db = LibStub("AceDB-3.0"):New("OwnDPSDB", ns.defaults)
+  ns.db.RegisterCallback(ns, "OnProfileChanged", "OnProfileChanged")
+  ns.db.RegisterCallback(ns, "OnProfileCopied", "OnProfileCopied")
+  ns.db.RegisterCallback(ns, "OnProfileReset", "OnProfileReset")
   ns.Debug:Init()
+  ns.Options:Init()
 end
 
 function handlers.PLAYER_LOGIN()
   ns.Display:Create()
+  -- Schriften, die andere Addons später registrieren, nachladen
+  if LSM then
+    LSM.RegisterCallback(ns, "LibSharedMedia_Registered", function(_, mediatype, key)
+      if mediatype == "font" and key == ns.db.profile.font.name then ns:Refresh() end
+    end)
+  end
   ns.Debug:LogMeta()
   C_Timer.NewTicker(UPDATE_INTERVAL, safeUpdate)
   safeUpdate()
@@ -188,12 +230,14 @@ for event in pairs(handlers) do
 end
 
 ---------------------------------------------------------------------------
--- Slash-Befehle (Einstellungsmenü folgt in Meilenstein 3)
+-- Slash-Befehle. /owndps ohne Argument öffnet das Einstellungsmenü.
 ---------------------------------------------------------------------------
 
 local SOURCE_NAMES = { auto = "SOURCE_AUTO", current = "SOURCE_CURRENT", overall = "SOURCE_OVERALL" }
 local TOGGLES = { rank = { "showRank", "ELEMENT_RANK" }, name = { "showName", "ELEMENT_NAME" }, unit = { "showUnit", "ELEMENT_UNIT" } }
 local STYLE_NAMES = { arrow = "STYLE_ARROW", boxes = "STYLE_BOXES", bars = "STYLE_BARS", off = "STYLE_OFF" }
+local BOX_LAYOUT_NAMES = { side = "BOXLAYOUT_SIDE", stack = "BOXLAYOUT_STACK" }
+ns.SOURCE_NAMES, ns.STYLE_NAMES, ns.BOX_LAYOUT_NAMES = SOURCE_NAMES, STYLE_NAMES, BOX_LAYOUT_NAMES
 
 -- Zahl aus der Eingabe, akzeptiert auch Komma ("0,5")
 local function parseNumber(arg)
@@ -207,29 +251,39 @@ end
 
 local function printHelp()
   Print(L["HELP_HEADER"])
-  for _, key in ipairs({ "HELP_MODE", "HELP_SOURCE", "HELP_TOGGLE", "HELP_TREND", "HELP_WINDOW", "HELP_TOLERANCE", "HELP_TRENDSIZE", "HELP_MOVE", "HELP_RESET", "HELP_DEBUG", "HELP_STATUS" }) do
+  for _, key in ipairs({ "HELP_OPEN", "HELP_MODE", "HELP_SOURCE", "HELP_TOGGLE", "HELP_TREND", "HELP_BOXLAYOUT",
+      "HELP_WINDOW", "HELP_TOLERANCE", "HELP_TRENDSIZE", "HELP_MOVE", "HELP_RESET", "HELP_DEBUG", "HELP_STATUS" }) do
     print("  " .. L[key])
   end
 end
 
+-- Nach jeder Änderung: Anzeige neu aufbauen und ein offenes Menü aktualisieren
+local function changed(setting)
+  ns.Debug:Add("setting", setting)
+  ns:Refresh()
+  ns:NotifyOptions()
+end
+
 local commands = {}
+
+function commands.help()
+  printHelp()
+end
 
 function commands.mode(arg)
   if arg ~= "dps" and arg ~= "hps" then printHelp(); return end
   ns.db.profile.mode = arg
   ns.Data:ClearHistory()
-  ns.Debug:Add("setting", { mode = arg })
+  changed({ mode = arg })
   Print(L["MODE_SET"]:format(modeName(arg)))
-  safeUpdate()
 end
 
 function commands.source(arg)
   if not SOURCE_NAMES[arg] then printHelp(); return end
   ns.db.profile.dataSource = arg
   ns.Data:ClearHistory()
-  ns.Debug:Add("setting", { dataSource = arg })
+  changed({ dataSource = arg })
   Print(L["SOURCE_SET"]:format(L[SOURCE_NAMES[arg]]))
-  safeUpdate()
 end
 
 function commands.toggle(arg)
@@ -237,17 +291,22 @@ function commands.toggle(arg)
   if not t then printHelp(); return end
   local p = ns.db.profile
   p[t[1]] = not p[t[1]]
+  changed({ [t[1]] = p[t[1]] })
   Print((p[t[1]] and L["ELEMENT_SHOWN"] or L["ELEMENT_HIDDEN"]):format(L[t[2]]))
-  safeUpdate()
 end
 
 function commands.trend(arg)
   if not STYLE_NAMES[arg] then printHelp(); return end
   ns.db.profile.trend.style = arg
-  ns.Display:ApplySettings()
-  ns.Debug:Add("setting", { trendStyle = arg })
+  changed({ trendStyle = arg })
   Print(L["TREND_STYLE_SET"]:format(L[STYLE_NAMES[arg]]))
-  safeUpdate()
+end
+
+function commands.boxlayout(arg)
+  if not BOX_LAYOUT_NAMES[arg] then printHelp(); return end
+  ns.db.profile.trend.boxLayout = arg
+  changed({ boxLayout = arg })
+  Print(L["BOXLAYOUT_SET"]:format(L[BOX_LAYOUT_NAMES[arg]]))
 end
 
 function commands.window(arg)
@@ -258,9 +317,8 @@ function commands.window(arg)
   end
   ns.db.profile.trend.window = n
   ns.Data:ClearHistory()
-  ns.Debug:Add("setting", { trendWindow = n })
+  changed({ trendWindow = n })
   Print(L["WINDOW_SET"]:format(n))
-  safeUpdate()
 end
 
 -- Eingabe in Prozent, gespeichert als Anteil
@@ -271,10 +329,8 @@ function commands.tolerance(arg)
     return
   end
   ns.db.profile.trend.tolerance = n / 100
-  ns.Display:ApplySettings()
-  ns.Debug:Add("setting", { trendTolerance = n / 100 })
+  changed({ trendTolerance = n / 100 })
   Print(L["TOLERANCE_SET"]:format(n))
-  safeUpdate()
 end
 
 -- 0 = an die Schriftgröße gekoppelt
@@ -286,8 +342,7 @@ function commands.trendsize(arg)
   end
   n = math.floor(n + 0.5)
   ns.db.profile.trend.size = n
-  ns.Display:ApplySettings()
-  ns.Debug:Add("setting", { trendSize = n })
+  changed({ trendSize = n })
   if n == 0 then
     Print(L["TRENDSIZE_FONT"])
   else
@@ -303,6 +358,7 @@ end
 
 function commands.reset()
   ns.Display:ResetPosition()
+  ns:NotifyOptions()
   Print(L["POSITION_RESET"])
 end
 
@@ -319,10 +375,12 @@ function commands.debug(arg)
   if arg == "on" then
     ns.Debug:SetEnabled(true)
     ns.Debug:LogInstance({ reason = "debugOn" })
+    ns:NotifyOptions()
     Print(L["DEBUG_ON"])
   elseif arg == "off" then
     ns.Debug:Add("debugOff")
     ns.Debug:SetEnabled(false)
+    ns:NotifyOptions()
     Print(L["DEBUG_OFF"])
   elseif arg == "clear" then
     ns.Debug:Clear()
@@ -336,8 +394,9 @@ SLASH_OWNDPS1 = "/owndps"
 SlashCmdList.OWNDPS = function(msg)
   if not ns.db then return end
   local cmd, arg = strtrim(msg or ""):lower():match("^(%S*)%s*(.-)$")
-  if cmd == "" or cmd == "help" then
-    printHelp()
+  if cmd == "" then
+    -- Menü öffnen; ohne Menü (Bibliothek fehlt) die Hilfe zeigen
+    if not ns.Options:Open() then printHelp() end
   elseif commands[cmd] then
     commands[cmd](arg)
   else

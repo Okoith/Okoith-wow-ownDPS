@@ -10,7 +10,16 @@ All data comes from Blizzard's `C_DamageMeter` API. The addon does not use the c
 
 ## Status
 
-Early test builds (`v0.x.y-alpha.N`). The settings panel and Edit Mode support will follow.
+Early test builds (`v0.x.y-alpha.N`). Edit Mode support will follow.
+
+## Settings
+
+Type `/owndps` or open *Settings > AddOns > OwnDPS*. Changes apply immediately.
+
+- **General:** mode (DPS/HPS), data source, rank/name/unit, name in class color, reset position, debug mode
+- **Appearance:** font (LibSharedMedia), font size, outline, shadow, colors, background, border, scale, opacity
+- **Trend:** style (arrow, boxes, bars, off), box arrangement, time window, tolerance, indicator size, colors
+- **Profiles:** settings are stored per character; copy them from another character or reset them
 
 ## Installation
 
@@ -20,11 +29,13 @@ Download the zip from the [Releases](../../releases) page and extract it to `Wor
 
 | Command | Effect |
 |---|---|
-| `/owndps` | Help |
+| `/owndps` | Open the settings |
+| `/owndps help` | List the commands |
 | `/owndps mode dps\|hps` | Show damage or healing |
 | `/owndps source auto\|current\|overall` | Data source |
 | `/owndps toggle rank\|name\|unit` | Show or hide an element |
 | `/owndps trend arrow\|boxes\|bars\|off` | Trend style (shown in combat only) |
+| `/owndps boxlayout side\|stack` | Arrangement of the trend boxes |
 | `/owndps window N` | Trend time window in seconds (0.5 to 30) |
 | `/owndps tolerance N` | Trend tolerance in percent (0.1 to 20, arrow and boxes) |
 | `/owndps trendsize N` | Indicator size in pixels (0 = font size) |
