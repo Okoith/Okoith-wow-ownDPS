@@ -16,8 +16,34 @@ local ABBREV_OPTS = {
     { breakpoint = 1e9, abbreviation = "B", significandDivisor = 1e8, fractionDivisor = 10, abbreviationIsGlobal = false },
     { breakpoint = 1e6, abbreviation = "M", significandDivisor = 1e5, fractionDivisor = 10, abbreviationIsGlobal = false },
     { breakpoint = 1e3, abbreviation = "k", significandDivisor = 1e2, fractionDivisor = 10, abbreviationIsGlobal = false },
+    -- Unter 1000 ganze Zahl. Ohne diese Regel kam der Rohwert, z. B. "240.07407407407" (Test 0.1.0-alpha.1)
+    { breakpoint = 1, abbreviation = "", significandDivisor = 1, fractionDivisor = 1, abbreviationIsGlobal = false },
   },
 }
+
+-- Nur für den Selbsttest im Debugmodus: dieselben Regeln, die letzte mit breakpoint = 0,
+-- um zu sehen, ob damit auch Werte unter 1 als "0" erscheinen.
+local ABBREV_OPTS_BP0 = { breakpointData = {} }
+for i, rule in ipairs(ABBREV_OPTS.breakpointData) do
+  local copy = {}
+  for k, v in pairs(rule) do copy[k] = v end
+  ABBREV_OPTS_BP0.breakpointData[i] = copy
+end
+ABBREV_OPTS_BP0.breakpointData[#ABBREV_OPTS_BP0.breakpointData].breakpoint = 0
+
+local FORMAT_SAMPLES = { 0, 0.4, 0.999, 1, 7.5, 240.07407407407, 999.9, 1234.5, 12345.6, 1234567 }
+
+-- Formatiert feste, nicht geheime Beispielwerte und liefert die Ergebnisse fürs Debug-Log.
+function Display:FormatSelfTest()
+  local out = {}
+  for _, v in ipairs(FORMAT_SAMPLES) do
+    local ok, r = pcall(AbbreviateNumbers, v, ABBREV_OPTS)
+    out["bp1 " .. v] = ok and r or ("error: " .. tostring(r))
+    local ok0, r0 = pcall(AbbreviateNumbers, v, ABBREV_OPTS_BP0)
+    out["bp0 " .. v] = ok0 and r0 or ("error: " .. tostring(r0))
+  end
+  return out
+end
 
 local EMPTY_TEXT = "-"
 local MEDIA = "Interface\\AddOns\\" .. ADDON_NAME .. "\\media\\"
@@ -356,8 +382,8 @@ function Display:RenderTrend(s, prev, hasPrev)
   end
 end
 
--- Für den Debugmodus: Ist die Textbreite lesbar, wenn der Text geheim ist?
--- (Antwort wird für Hintergrund/Rahmen in Meilenstein 3 gebraucht.)
+-- Für den Debugmodus. Getestet (0.1.0-alpha.1): GetStringWidth ist im Kampf geheim,
+-- Hintergrund und Rahmen deshalb per SetPoint am FontString verankern.
 function Display:DebugInfo(out)
   if not text then return end
   local ok, w = pcall(text.GetStringWidth, text)

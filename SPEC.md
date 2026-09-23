@@ -34,16 +34,18 @@ local ABBREV_OPTS = {
     { breakpoint = 1e9, abbreviation = "B", significandDivisor = 1e8, fractionDivisor = 10, abbreviationIsGlobal = false },
     { breakpoint = 1e6, abbreviation = "M", significandDivisor = 1e5, fractionDivisor = 10, abbreviationIsGlobal = false },
     { breakpoint = 1e3, abbreviation = "k", significandDivisor = 1e2, fractionDivisor = 10, abbreviationIsGlobal = false },
+    { breakpoint = 1, abbreviation = "", significandDivisor = 1, fractionDivisor = 1, abbreviationIsGlobal = false },
   },
 }
 ```
+
+Die vierte Regel (unter 1000 ganze Zahl) ist seit 0.2.0-alpha.1 ergänzt. Ohne sie liefert `AbbreviateNumbers` unter 1000 den ungerundeten Rohwert (siehe Abschnitt 10). Wie 0 und Werte unter 1 mit dieser Regel erscheinen, ist noch nicht im Spiel geprüft; der Debugmodus schreibt dazu einen Selbsttest (`formatSelfTest`) ins Log.
 
 Den Text immer über `FontString:SetFormattedText()` setzen. Keine Lua-Stringverkettung mit dem Ergebnis, denn im Kampf ist auch der formatierte String geheim.
 
 ### Modus DPS / HPS
 
 Umschalter in den Einstellungen. DPS nutzt `Enum.DamageMeterType.Dps`, HPS nutzt `Enum.DamageMeterType.Hps`. Platz, Wert und Trend beziehen sich immer auf den gewählten Modus.
-**Hinweis:** HPS ist noch nicht im Spiel getestet. Das erste Test-Build muss es mit prüfen.
 
 ### Welche Session wird angezeigt
 
@@ -178,3 +180,7 @@ deDE und enUS. Alle Texte über eine Locale-Tabelle, Fallback enUS.
 | Reset beim Dungeon-Betreten | macht Blizzard selbst (`DAMAGE_METER_RESET`) |
 | Haustierkampf | per State Driver ausgeblendet |
 | Nach Kampfende zählt Blizzard die Kampfzeit noch 2–3 s weiter | DPS sinkt kurz und springt zurück |
+| HPS-Modus (`Enum.DamageMeterType.Hps`) | funktioniert wie DPS (Test mit OwnDPS 0.1.0-alpha.1) |
+| `AbbreviateNumbers` mit `breakpointData` ohne Regel unter 1000 | liefert den ungerundeten Rohwert, z. B. `240.07407407407` (Test mit 0.1.0-alpha.1) |
+| `FontString:GetStringWidth()` im Kampf | geheim. Hintergrund und Rahmen nicht über berechnete Breiten, sondern per `SetPoint` am FontString verankern (Test mit 0.1.0-alpha.1) |
+| CVar `damageMeterEnabled = 0` | `C_DamageMeter` liefert trotzdem Daten (Test mit 0.1.0-alpha.1) |
