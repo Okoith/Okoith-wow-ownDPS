@@ -46,11 +46,12 @@ function Display:FormatSelfTest()
   return out
 end
 
-local EMPTY_TEXT = "-"
+-- Beispielwert im Bearbeitungsmodus (SPEC: "1. 123.4k DPS")
+local SAMPLE_VALUE = "123.4k"
 local MEDIA = "Interface\\AddOns\\" .. ADDON_NAME .. "\\media\\"
 local BAR_TEXTURE = "Interface\\Buttons\\WHITE8x8"
 
-local frame, text
+local frame, content, text
 local bgTex, borderTop, borderBottom, borderLeft, borderRight
 local bgRightAnchor      -- Region, an deren rechtem Rand Hintergrund und Rahmen enden
 local trendHolder
@@ -178,14 +179,21 @@ function Display:Create()
   frame:SetClampedToScreen(true)
   frame:EnableMouse(false)
 
-  text = frame:CreateFontString(nil, "OVERLAY")
+  -- Alles Sichtbare liegt in "content". Ohne Wert wird nur content ausgeblendet;
+  -- der Hauptframe gehört weiter dem State Driver (Sichtbarkeitsregeln). Beide
+  -- Frames sind nicht geschützt, Show/Hide von content ist daher auch im Kampf erlaubt.
+  content = CreateFrame("Frame", nil, frame)
+  content:SetAllPoints(frame)
+  content:Hide()
+
+  text = content:CreateFontString(nil, "OVERLAY")
   text:SetPoint("LEFT", frame, "LEFT", 4, 0)
   text:SetJustifyH("LEFT")
   text:SetWordWrap(false)
 
-  bgTex = frame:CreateTexture(nil, "BACKGROUND", nil, 1)
+  bgTex = content:CreateTexture(nil, "BACKGROUND", nil, 1)
   local function line(a1, a2, horizontal)
-    local t = frame:CreateTexture(nil, "BORDER")
+    local t = content:CreateTexture(nil, "BORDER")
     t:SetPoint(a1, bgTex, a1, 0, 0)
     t:SetPoint(a2, bgTex, a2, 0, 0)
     if horizontal then t:SetHeight(1) else t:SetWidth(1) end
@@ -199,7 +207,6 @@ function Display:Create()
 
   self:CreateTrend()
   self:ApplySettings()
-  text:SetText(EMPTY_TEXT)
   self:UpdateVisibility()
 end
 
@@ -263,11 +270,27 @@ end
 function Display:SetEditMode(on)
   self.editMode = on and true or false
   self:UpdateVisibility()
+  if ns.SafeUpdate then ns.SafeUpdate() end   -- Beispiel sofort zeigen bzw. entfernen
 end
 
-local function showEmpty(last)
-  text:SetText(EMPTY_TEXT)
-  last.shown = "empty"
+-- Ohne Wert (oder bei einem Fehler) wird alles ausgeblendet: Text, Trend,
+-- Hintergrund und Rahmen. Es gibt kein Platzhalterzeichen mehr.
+local function hideContent(last)
+  content:Hide()
+  last.shown = "hidden"
+end
+
+-- Bearbeitungsmodus: Beispieltext "1. 123.4k DPS" (bzw. HPS, mit Name, falls aktiv)
+local function renderSample(last)
+  local p = ns.db.profile
+  local fmt, withRank = buildFormat(p, 1)
+  if withRank then
+    text:SetFormattedText(fmt, 1, SAMPLE_VALUE)
+  else
+    text:SetFormattedText(fmt, SAMPLE_VALUE)
+  end
+  content:Show()
+  last.shown = "sample"
 end
 
 -- s: Ergebnis von Data:Read()
@@ -278,8 +301,13 @@ function Display:Render(s)
   last.formatted = nil
   last.setTextOk = nil
 
+  if self.editMode then
+    renderSample(last)
+    return
+  end
+
   if not s.hasValue then
-    showEmpty(last)
+    hideContent(last)
     return
   end
 
@@ -287,7 +315,7 @@ function Display:Render(s)
   last.abbrevOk = okA
   if not okA then
     ns.Debug:Error("AbbreviateNumbers", formatted)
-    showEmpty(last)
+    hideContent(last)
     return
   end
   last.formatted = formatted   -- evtl. geheim, das Log schreibt dann "<SECRET>"
@@ -302,10 +330,11 @@ function Display:Render(s)
   end
   last.setTextOk = okF
   if okF then
+    content:Show()
     last.shown = "value"
   else
     ns.Debug:Error("SetFormattedText", err)
-    showEmpty(last)
+    hideContent(last)
   end
 end
 
@@ -367,7 +396,7 @@ local function makeBar(parent)
 end
 
 function Display:CreateTrend()
-  trendHolder = CreateFrame("Frame", nil, frame)
+  trendHolder = CreateFrame("Frame", nil, content)
   trendHolder:SetPoint("LEFT", text, "RIGHT", 4, 0)
   trendHolder:Hide()
 
@@ -455,10 +484,29 @@ local function clearTrend(st)
 end
 
 -- s: Ergebnis von Data:Read(); prev: Wert von vor dem Zeitfenster (evtl. geheim)
+-- Muster im Bearbeitungsmodus: Zustand "hoch" (Balken: runter halb gefüllt als Stärke)
+local function sampleTrend(st, style)
+  st.up:SetMinMaxValues(0, 1)
+  st.up:SetValue(1)
+  st.down:SetMinMaxValues(0, 1)
+  st.down:SetValue(style == "bars" and 0.5 or 0)
+end
+
 function Display:RenderTrend(s, prev, hasPrev)
   if not trendHolder then return end
   local last = self.last
-  local st = trendStyles[ns.db.profile.trend.style]   -- nil beim Stil "Aus"
+  local style = ns.db.profile.trend.style
+  local st = trendStyles[style]   -- nil beim Stil "Aus"
+
+  if self.editMode then
+    local visible = st ~= nil
+    trendHolder:SetShown(visible)
+    anchorBackground(visible and trendHolder or text)
+    last.trendShown = visible
+    if visible then sampleTrend(st, style) end
+    return
+  end
+
   local visible = st ~= nil and s.inCombat
   trendHolder:SetShown(visible)
   anchorBackground(visible and trendHolder or text)
@@ -494,6 +542,7 @@ function Display:DebugInfo(out)
     out.textWidth = w
   end
   out.frameShown = frame:IsShown()
+  out.contentShown = content:IsShown()
   -- Der Indikator hängt rechts am Text. Ist seine Position dann lesbar?
   if trendHolder and trendHolder:IsShown() then
     local okL, left = pcall(trendHolder.GetLeft, trendHolder)

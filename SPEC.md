@@ -184,3 +184,10 @@ deDE und enUS. Alle Texte über eine Locale-Tabelle, Fallback enUS.
 | `AbbreviateNumbers` mit `breakpointData` ohne Regel unter 1000 | liefert den ungerundeten Rohwert, z. B. `240.07407407407` (Test mit 0.1.0-alpha.1) |
 | `FontString:GetStringWidth()` im Kampf | geheim. Hintergrund und Rahmen nicht über berechnete Breiten, sondern per `SetPoint` am FontString verankern (Test mit 0.1.0-alpha.1) |
 | CVar `damageMeterEnabled = 0` | `C_DamageMeter` liefert trotzdem Daten (Test mit 0.1.0-alpha.1) |
+| Einstellungsmenü (AceConfig-3.0/AceConfigDialog-3.0 unter AddOns, Kategorie-ID aus `AddToBlizOptions` an `Settings.OpenToCategory`) | funktioniert vollständig; Debug-Log über 20 Kämpfe ohne Fehler (Test mit 0.3.0-alpha.1) |
+| Verschieben im Bearbeitungsmodus über LibEditMode (Tag 15), Position pro Layout | funktioniert (Test mit 0.4.0-alpha.1) |
+| `Settings.OpenToCategory` aus dem LibEditMode-Dialog (Bearbeitungsmodus offen) | läuft ohne Fehler, zeigt aber kein Fenster (Test mit 0.4.0-alpha.1) |
+| `AceConfigDialog:Open(appName)` im Bearbeitungsmodus | eigenständiges Fenster erscheint (Ebene `FULLSCREEN_DIALOG`, Bearbeitungsmodus `DIALOG`) (Test mit 0.4.1-alpha.1) |
+| LibEditMode-Slider ohne `formatter` | zeigt den Float-Rohwert, z. B. `1.7000000476837`. Mit `formatter`, der einen Text liefert (`string.format("%.2f", v)`), korrekt (Test mit 0.4.0/0.4.1-alpha.1) |
+| Sperren im Bearbeitungsmodus über ein **internes** LibEditMode-Detail: `OnDragStart` des Auswahl-Frames `lib.frameSelections[frame]` entfernen; Pfeiltasten und „Position zurücksetzen“ im Dialog über den Positions-Callback zurücksetzen | funktioniert (Test mit 0.4.1-alpha.1). Nicht dokumentiert, nach LibEditMode-Updates erneut prüfen |
+| Sichtbarkeit per State Driver (`[combat]`, `[group]`, `[vehicleui]`, `[petbattle]`), Instanzen über `IsInInstance()` bei Zonenwechsel | funktioniert (Test mit 0.4.1-alpha.1) |

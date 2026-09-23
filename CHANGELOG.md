@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.5.0-beta.1 (2026-09-23)
+
+Release-Kandidat. Alle Meilensteine aus CLAUDE.md sind umgesetzt und im Spiel getestet (bis 0.4.1-alpha.1).
+
+- Ohne Wert wird die Anzeige komplett ausgeblendet (Text, Trend, Hintergrund, Rahmen) statt „-“ zu zeigen. Die Sichtbarkeitsregeln gelten weiterhin zusätzlich.
+- Umsetzung über einen inneren, nicht geschützten Container-Frame; der Hauptframe bleibt beim State Driver, im Kampf wird kein `RegisterStateDriver` aufgerufen.
+- Bearbeitungsmodus: immer sichtbar mit Beispieltext „1. 123.4k DPS“ bzw. „HPS“ (inkl. Name, falls aktiviert) und dem Trend-Indikator im gewählten Stil als Muster
+- SPEC.md Abschnitt 10 um die Testergebnisse aus Meilenstein 3 und 4 ergänzt
+- README ergänzt (Vorschau im Bearbeitungsmodus, Ausblenden ohne Daten, Beta-Tags)
+
 ## 0.4.1-alpha.1 (2026-09-23)
 
 Korrekturen aus dem Test von 0.4.0-alpha.1.
