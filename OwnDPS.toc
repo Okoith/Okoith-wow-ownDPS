@@ -3,7 +3,7 @@
 ## Notes: Shows your own DPS or HPS, your rank and a trend in a single line.
 ## Notes-deDE: Zeigt die eigene DPS oder HPS, die Platzierung und einen Trend in einer Zeile.
 ## Author: Dominique
-## Version: 0.3.0-alpha.1
+## Version: 0.4.0-alpha.1
 ## SavedVariables: OwnDPSDB, OwnDPSDebugLog
 ## X-License: MIT
 # ## X-Curse-Project-ID:
@@ -16,5 +16,6 @@ Locales\deDE.lua
 Debug.lua
 Data.lua
 Display.lua
+EditMode.lua
 Options.lua
 Core.lua

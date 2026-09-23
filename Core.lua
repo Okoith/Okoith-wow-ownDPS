@@ -42,7 +42,11 @@ ns.defaults = {
     },
     scale = 1,
     alpha = 1,
-    position = { point = "CENTER", relPoint = "CENTER", x = 0, y = -180 },
+    position = { point = "CENTER", relPoint = "CENTER", x = 0, y = -180 },   -- bis 0.3.x; Startwert für Layouts
+    layouts = {},            -- Position pro Bearbeitungsmodus-Layout (EditMode.lua)
+    locked = false,          -- im Bearbeitungsmodus nicht verschiebbar
+    visibility = "always",   -- "always" | "instance" | "group" | "combat"
+    hideInVehicle = false,
     trend = {
       style = "arrow",       -- "arrow" | "boxes" | "bars" | "off"
       boxLayout = "side",    -- Kästchen: "side" (nebeneinander) | "stack" (übereinander)
@@ -103,6 +107,8 @@ local function logStatus(s)
     trendHasPrev = last.trendHasPrev,
     trendSetOk = last.trendSetOk,
     historyLen = #ns.Data.history,
+    visibilityMacro = ns.Display.visibilityMacro,
+    layout = ns.EditMode:GetLayoutName(),
   }
   local DM = C_DamageMeter
   if DM and DM.GetSessionDurationSeconds and s.sessionType ~= nil then
@@ -133,6 +139,7 @@ ns.SafeUpdate = safeUpdate
 -- Einstellungen sofort anwenden, ohne /reload
 function ns:Refresh()
   ns.Display:ApplySettings()
+  ns.Display:UpdateVisibility()
   safeUpdate()
 end
 
@@ -145,6 +152,7 @@ end
 function ns:OnProfileChanged()
   ns.Data:ClearHistory()
   ns:Refresh()
+  ns.EditMode:Refresh()
 end
 ns.OnProfileCopied = ns.OnProfileChanged
 ns.OnProfileReset = ns.OnProfileChanged
@@ -171,6 +179,7 @@ end
 
 function handlers.PLAYER_LOGIN()
   ns.Display:Create()
+  ns.EditMode:Init()
   -- Schriften, die andere Addons später registrieren, nachladen
   if LSM then
     LSM.RegisterCallback(ns, "LibSharedMedia_Registered", function(_, mediatype, key)
@@ -185,6 +194,11 @@ end
 
 function handlers.PLAYER_ENTERING_WORLD(isInitialLogin, isReloadingUi)
   ns.Debug:LogInstance({ initial = isInitialLogin, reload = isReloadingUi })
+  ns.Display:UpdateVisibility()   -- "Nur in Instanzen" hängt an IsInInstance()
+end
+
+function handlers.ZONE_CHANGED_NEW_AREA()
+  ns.Display:UpdateVisibility()
 end
 
 function handlers.PLAYER_REGEN_DISABLED()
@@ -197,7 +211,7 @@ end
 function handlers.PLAYER_REGEN_ENABLED()
   ns.Debug:Add("combatEnd")
   postCombatUntil = GetTime() + POST_COMBAT_STATUS
-  ns.Display:RegisterVisibility()   -- falls es beim Laden im Kampf fehlgeschlagen ist
+  ns.Display:UpdateVisibility()   -- im Kampf zurückgestellte Änderung nachholen
   safeUpdate()
 end
 
@@ -252,7 +266,7 @@ end
 local function printHelp()
   Print(L["HELP_HEADER"])
   for _, key in ipairs({ "HELP_OPEN", "HELP_MODE", "HELP_SOURCE", "HELP_TOGGLE", "HELP_TREND", "HELP_BOXLAYOUT",
-      "HELP_WINDOW", "HELP_TOLERANCE", "HELP_TRENDSIZE", "HELP_MOVE", "HELP_RESET", "HELP_DEBUG", "HELP_STATUS" }) do
+      "HELP_WINDOW", "HELP_TOLERANCE", "HELP_TRENDSIZE", "HELP_RESET", "HELP_DEBUG", "HELP_STATUS" }) do
     print("  " .. L[key])
   end
 end
@@ -350,14 +364,9 @@ function commands.trendsize(arg)
   end
 end
 
-function commands.move()
-  local on = not ns.Display.moving
-  ns.Display:SetMoveMode(on)
-  Print(on and L["MOVE_ON"] or L["MOVE_OFF"])
-end
-
+-- Position im aktiven Bearbeitungsmodus-Layout zurücksetzen
 function commands.reset()
-  ns.Display:ResetPosition()
+  ns.EditMode:ResetPosition()
   ns:NotifyOptions()
   Print(L["POSITION_RESET"])
 end

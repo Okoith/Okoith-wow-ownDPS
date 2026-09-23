@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.4.0-alpha.1 (2026-09-23)
+
+Meilenstein 4: Bearbeitungsmodus.
+
+- OwnDPS erscheint im WoW-Bearbeitungsmodus (LibEditMode), die Position wird pro Layout gespeichert
+- Dialog im Bearbeitungsmodus: Skalierung als Slider, Button „Weitere Einstellungen“ öffnet das OwnDPS-Menü
+- Neue Option „Sperren“: Die Anzeige lässt sich dann auch im Bearbeitungsmodus nicht verschieben (Ziehen, Pfeiltasten und „Position zurücksetzen“ im Dialog)
+- `/owndps move` entfernt, `/owndps reset` und der Menüpunkt setzen die Position im aktiven Layout zurück
+- Migration: Die bisherige Position wird für jedes Layout ohne eigenen Eintrag übernommen
+
+Meilenstein 5: Feinschliff.
+
+- Sichtbarkeit: Immer, Nur in Instanzen, Nur in Gruppe, Nur im Kampf; zusätzlich „Im Fahrzeug ausblenden“; im Haustierkampf immer ausgeblendet
+- Umsetzung über den State Driver (`[combat]`, `[group]`, `[vehicleui]`, `[petbattle]`); Instanzen über `IsInInstance()` bei Zonenwechseln, weil es dafür keine Macro-Bedingung gibt; Änderungen im Kampf werden bis Kampfende zurückgestellt
+- Debugmodus ist standardmäßig aus
+- README fertiggestellt (Funktionen, Bedienung, Befehle, Datenquelle `C_DamageMeter`, CurseForge-Einrichtung)
+- Release-Workflow reicht `CF_API_TOKEN` an den Packager weiter; ohne Secret und Projekt-ID entsteht weiterhin nur das GitHub-Release
+
 ## 0.3.0-alpha.1 (2026-09-23)
 
 Meilenstein 3: Einstellungsmenü.
