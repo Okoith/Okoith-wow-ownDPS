@@ -17,7 +17,8 @@ World of Warcraft addon (Retail 12.1, Midnight) that shows your own DPS or HPS, 
 - **Data source:** automatic (current fight in combat, overall otherwise), always current fight, or always overall
 - **Trend indicator** (combat only): arrow, boxes (side by side or stacked), bars, or off; adjustable time window and tolerance
 - **Appearance:** font (LibSharedMedia), size, outline, shadow, colors per element, name in class color, background, border, scale, opacity
-- **Edit Mode:** move the display in WoW's Edit Mode, position saved per layout, option to lock it
+- **Edit Mode:** move the display in WoW's Edit Mode, position saved per layout, option to lock it; a sample line with trend indicator is shown there
+- **No empty frame:** while there is no value (for example before your first hit), the display is hidden completely
 - **Visibility:** always, only in instances, only in a group, or only in combat; optionally hidden in vehicles; always hidden during pet battles
 - **Profiles:** settings per character, copy them from another character
 - **Languages:** English and German
@@ -38,6 +39,8 @@ Download the zip from the [Releases](../../releases) page and extract it to `Wor
 
 - **Settings:** type `/owndps` or open *Settings > AddOns > OwnDPS*. Changes apply immediately. The settings cannot be opened during combat.
 - **Position:** open WoW's Edit Mode (*Esc > Edit Mode*) and drag the OwnDPS frame. Clicking it opens a dialog with a scale slider and a *More settings* button. The position is saved per Edit Mode layout. With *Lock* enabled the frame cannot be moved, not even in Edit Mode.
+- **Edit Mode preview:** in Edit Mode the display always shows a sample line such as `1. 123.4k DPS` (or HPS, with your name if enabled) and the trend indicator in the selected style, so you can adjust position and size even without combat data.
+- **Hidden without data:** outside Edit Mode the display (text, trend, background and border) is hidden while no value is available. The visibility rules (instance, group, combat, vehicle, pet battle) apply in addition.
 
 ### Settings
 
@@ -70,7 +73,7 @@ Libraries are fetched by the [BigWigs packager](https://github.com/BigWigsMods/p
 
 ### Releases
 
-Pushing a tag `v*` (for example `v1.0.0`, test builds `v0.x.y-alpha.N`) starts `.github/workflows/release.yml`. It builds a zip with all libraries and publishes it as a GitHub release.
+Pushing a tag `v*` (for example `v1.0.0`, test builds `v0.x.y-alpha.N` or `v0.x.y-beta.N`) starts `.github/workflows/release.yml`. It builds a zip with all libraries and publishes it as a GitHub release.
 
 **CurseForge upload (optional):** the workflow already passes `CF_API_TOKEN` to the packager. The packager only uploads to CurseForge when both a token and a project ID are present. Without them, only the GitHub release is created. To enable the upload:
 
