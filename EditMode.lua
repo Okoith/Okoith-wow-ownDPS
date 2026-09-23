@@ -139,20 +139,22 @@ function EditMode:Init()
         default = 1,
         get = function() return ns.db.profile.scale end,
         set = function(_, value)
-          ns.db.profile.scale = value
+          ns.db.profile.scale = ns.RoundScale(value)
           ns:Refresh()
           ns:NotifyOptions()
         end,
         minValue = 0.5,
         maxValue = 3,
         valueStep = 0.05,
+        -- Blizzard setzt die Rückgabe per label:SetText(formatter(value)) (MinimalSlider.lua)
+        formatter = function(value) return string.format("%.2f", value) end,
       },
     })
 
     LEM:AddFrameSettingsButtons(frame, {
       {
         text = L["EDITMODE_MORE_SETTINGS"],
-        click = function() ns.Options:Open() end,
+        click = function() ns.Options:OpenStandalone() end,
       },
     })
 
