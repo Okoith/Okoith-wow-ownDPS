@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.2.0-alpha.1 (2026-09-23)
+
+Meilenstein 2: Trend.
+
+- Trend-Indikator mit vier Stilen: Pfeil (Standard), Kästchen, Balken, Aus
+- Pfeil und Kästchen nutzen den Abschneide-Trick, Pfeilform über Masken aus `media/`
+- Zeitfenster (Standard 3 s, 0,5 bis 30 s) und Toleranz (Standard 1 %, 0,1 bis 20 %)
+- Farben hoch (grün) und runter (rot), Größe an die Schriftgröße gekoppelt oder eigener Wert
+- Indikator nur im Kampf sichtbar, Historie wird bei Kampfbeginn, Reset und Wechsel von Modus oder Datenquelle geleert
+- Neue Befehle: `/owndps trend`, `/owndps window`, `/owndps tolerance`, `/owndps trendsize`
+- Debug-Log: Trend-Status pro Sekunde im Kampf
+- Behoben: Werte unter 1000 wurden ungerundet angezeigt (z. B. `240.07407407407 HPS`), jetzt ganze Zahl
+- Debug-Log: Selbsttest des Zahlenformats beim Einschalten (`formatSelfTest`)
+
 ## 0.1.0-alpha.1 (2026-09-23)
 
 Meilenstein 1: Grundgerüst.

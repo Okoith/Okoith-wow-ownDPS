@@ -80,6 +80,49 @@ local function readSession(s)
   end
 end
 
+---------------------------------------------------------------------------
+-- Historie für den Trend (SPEC Abschnitt 4)
+-- Einträge { t = GetTime(), v = <evtl. geheim> }. Secret Values zu speichern ist
+-- erlaubt, verglichen wird nur t (nie geheim). Den Wertevergleich macht WoW beim
+-- Zeichnen der StatusBars.
+---------------------------------------------------------------------------
+
+local HISTORY_STEP = 0.2   -- höchstens ein Eintrag pro 0,2 s (Ticker 0,25 s plus Events)
+
+local history = {}
+Data.history = history
+
+function Data:ClearHistory()
+  wipe(history)
+end
+
+-- Nur im Kampf: der Trend ist nur dort sichtbar, die Historie wird bei Kampfbeginn geleert.
+function Data:PushHistory(s)
+  if not (s.inCombat and s.hasValue) then return end
+  local now = GetTime()
+  local newest = history[#history]
+  if newest and now - newest.t < HISTORY_STEP then return end
+  history[#history + 1] = { t = now, v = s.value }
+end
+
+-- Wert von vor `window` Sekunden: der neueste Eintrag mit t <= jetzt - window.
+-- Ältere Einträge werden verworfen. Rückgabe: value, found
+function Data:GetPrevious(window)
+  local target = GetTime() - window
+  local found
+  for i = #history, 1, -1 do
+    if history[i].t <= target then found = i; break end
+  end
+  if not found then return nil, false end
+  local value = history[found].v
+  if found > 1 then
+    local keep = #history - found + 1
+    for i = 1, keep do history[i] = history[found + i - 1] end
+    for i = #history, keep + 1, -1 do history[i] = nil end
+  end
+  return value, true
+end
+
 function Data:Read()
   local s = state
   s.inCombat = InCombatLockdown() and true or false

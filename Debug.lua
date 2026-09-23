@@ -120,6 +120,9 @@ function Debug:LogMeta()
   }
   damageMeterAvailability(out)
   self:Add("meta", out)
+  if ns.Display and ns.Display.FormatSelfTest then
+    self:Add("formatSelfTest", ns.Display:FormatSelfTest())
+  end
 end
 
 function Debug:LogInstance(extra)

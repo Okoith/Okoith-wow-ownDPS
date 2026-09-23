@@ -32,6 +32,16 @@ ns.defaults = {
     scale = 1,
     alpha = 1,
     position = { point = "CENTER", relPoint = "CENTER", x = 0, y = -180 },
+    trend = {
+      style = "arrow",       -- "arrow" | "boxes" | "bars" | "off"
+      window = 3,            -- Sekunden, 0,5 bis 30
+      tolerance = 0.01,      -- Anteil (1 %), 0,001 bis 0,2; nur Pfeil und Kästchen
+      size = 0,              -- 0 = an die Schriftgröße gekoppelt
+      colors = {
+        up = { r = 0.1, g = 0.9, b = 0.1 },
+        down = { r = 0.9, g = 0.1, b = 0.1 },
+      },
+    },
   },
   global = {
     debug = false,
@@ -74,6 +84,13 @@ local function logStatus(s)
     formatted = last.formatted,        -- wird bei Secret zu "<SECRET>"
     setTextOk = last.setTextOk,
     shown = last.shown,
+    trendStyle = ns.db.profile.trend.style,
+    trendWindow = ns.db.profile.trend.window,
+    trendTolerance = ns.db.profile.trend.tolerance,
+    trendShown = last.trendShown,
+    trendHasPrev = last.trendHasPrev,
+    trendSetOk = last.trendSetOk,
+    historyLen = #ns.Data.history,
   }
   local DM = C_DamageMeter
   if DM and DM.GetSessionDurationSeconds and s.sessionType ~= nil then
@@ -87,7 +104,10 @@ end
 
 function ns:Update()
   local s = ns.Data:Read()
+  ns.Data:PushHistory(s)
+  local prev, hasPrev = ns.Data:GetPrevious(ns.db.profile.trend.window)
   ns.Display:Render(s)
+  ns.Display:RenderTrend(s, prev, hasPrev)
   if s.err then ns.Debug:Error("Data:Read", s.err) end
   if ns.Debug:IsEnabled() then logStatus(s) end
 end
@@ -126,6 +146,7 @@ function handlers.PLAYER_ENTERING_WORLD(isInitialLogin, isReloadingUi)
 end
 
 function handlers.PLAYER_REGEN_DISABLED()
+  ns.Data:ClearHistory()
   ns.Debug:Add("combatStart", { groupSize = GetNumGroupMembers() })
   lastStatus = 0
   safeUpdate()
@@ -143,6 +164,7 @@ function handlers.DAMAGE_METER_CURRENT_SESSION_UPDATED()
 end
 
 function handlers.DAMAGE_METER_RESET()
+  ns.Data:ClearHistory()
   ns.Debug:Add("damageMeterReset")
   safeUpdate()
 end
@@ -171,6 +193,13 @@ end
 
 local SOURCE_NAMES = { auto = "SOURCE_AUTO", current = "SOURCE_CURRENT", overall = "SOURCE_OVERALL" }
 local TOGGLES = { rank = { "showRank", "ELEMENT_RANK" }, name = { "showName", "ELEMENT_NAME" }, unit = { "showUnit", "ELEMENT_UNIT" } }
+local STYLE_NAMES = { arrow = "STYLE_ARROW", boxes = "STYLE_BOXES", bars = "STYLE_BARS", off = "STYLE_OFF" }
+
+-- Zahl aus der Eingabe, akzeptiert auch Komma ("0,5")
+local function parseNumber(arg)
+  local s = (arg or ""):gsub(",", ".")
+  return tonumber(s)
+end
 
 local function modeName(mode)
   return mode == "hps" and L["UNIT_HPS"] or L["UNIT_DPS"]
@@ -178,7 +207,7 @@ end
 
 local function printHelp()
   Print(L["HELP_HEADER"])
-  for _, key in ipairs({ "HELP_MODE", "HELP_SOURCE", "HELP_TOGGLE", "HELP_MOVE", "HELP_RESET", "HELP_DEBUG", "HELP_STATUS" }) do
+  for _, key in ipairs({ "HELP_MODE", "HELP_SOURCE", "HELP_TOGGLE", "HELP_TREND", "HELP_WINDOW", "HELP_TOLERANCE", "HELP_TRENDSIZE", "HELP_MOVE", "HELP_RESET", "HELP_DEBUG", "HELP_STATUS" }) do
     print("  " .. L[key])
   end
 end
@@ -188,6 +217,7 @@ local commands = {}
 function commands.mode(arg)
   if arg ~= "dps" and arg ~= "hps" then printHelp(); return end
   ns.db.profile.mode = arg
+  ns.Data:ClearHistory()
   ns.Debug:Add("setting", { mode = arg })
   Print(L["MODE_SET"]:format(modeName(arg)))
   safeUpdate()
@@ -196,6 +226,7 @@ end
 function commands.source(arg)
   if not SOURCE_NAMES[arg] then printHelp(); return end
   ns.db.profile.dataSource = arg
+  ns.Data:ClearHistory()
   ns.Debug:Add("setting", { dataSource = arg })
   Print(L["SOURCE_SET"]:format(L[SOURCE_NAMES[arg]]))
   safeUpdate()
@@ -208,6 +239,60 @@ function commands.toggle(arg)
   p[t[1]] = not p[t[1]]
   Print((p[t[1]] and L["ELEMENT_SHOWN"] or L["ELEMENT_HIDDEN"]):format(L[t[2]]))
   safeUpdate()
+end
+
+function commands.trend(arg)
+  if not STYLE_NAMES[arg] then printHelp(); return end
+  ns.db.profile.trend.style = arg
+  ns.Display:ApplySettings()
+  ns.Debug:Add("setting", { trendStyle = arg })
+  Print(L["TREND_STYLE_SET"]:format(L[STYLE_NAMES[arg]]))
+  safeUpdate()
+end
+
+function commands.window(arg)
+  local n = parseNumber(arg)
+  if not n or n < 0.5 or n > 30 then
+    Print(L["RANGE"]:format("0.5", "30"))
+    return
+  end
+  ns.db.profile.trend.window = n
+  ns.Data:ClearHistory()
+  ns.Debug:Add("setting", { trendWindow = n })
+  Print(L["WINDOW_SET"]:format(n))
+  safeUpdate()
+end
+
+-- Eingabe in Prozent, gespeichert als Anteil
+function commands.tolerance(arg)
+  local n = parseNumber(arg)
+  if not n or n < 0.1 or n > 20 then
+    Print(L["RANGE"]:format("0.1", "20"))
+    return
+  end
+  ns.db.profile.trend.tolerance = n / 100
+  ns.Display:ApplySettings()
+  ns.Debug:Add("setting", { trendTolerance = n / 100 })
+  Print(L["TOLERANCE_SET"]:format(n))
+  safeUpdate()
+end
+
+-- 0 = an die Schriftgröße gekoppelt
+function commands.trendsize(arg)
+  local n = parseNumber(arg)
+  if not n or (n ~= 0 and (n < 6 or n > 64)) then
+    Print(L["RANGE"]:format("6", "64") .. " " .. L["TRENDSIZE_ZERO"])
+    return
+  end
+  n = math.floor(n + 0.5)
+  ns.db.profile.trend.size = n
+  ns.Display:ApplySettings()
+  ns.Debug:Add("setting", { trendSize = n })
+  if n == 0 then
+    Print(L["TRENDSIZE_FONT"])
+  else
+    Print(L["TRENDSIZE_SET"]:format(n))
+  end
 end
 
 function commands.move()
@@ -224,6 +309,9 @@ end
 function commands.status()
   local p = ns.db.profile
   Print(L["STATUS"]:format(modeName(p.mode), L[SOURCE_NAMES[p.dataSource] or "SOURCE_AUTO"], ns.db:GetCurrentProfile()))
+  local t = p.trend
+  Print(L["STATUS_TREND"]:format(L[STYLE_NAMES[t.style] or "STYLE_ARROW"], t.window, t.tolerance * 100,
+    t.size > 0 and tostring(t.size) or L["TRENDSIZE_FONT_SHORT"]))
   Print(L["DEBUG_STATUS"]:format(ns.Debug:IsEnabled() and L["ON"] or L["OFF"], ns.Debug:Count()))
 end
 
