@@ -8,6 +8,8 @@ World of Warcraft addon (Retail 12.1, Midnight) that shows your own DPS or HPS, 
 1. 495.1k DPS ▲
 ```
 
+**Download:** [CurseForge](https://www.curseforge.com/wow/addons/owndps) · [GitHub Releases](../../releases)
+
 <!-- Screenshot: Anzeige im Kampf mit Trend-Pfeil -->
 <!-- Screenshot: Einstellungsmenü -->
 <!-- Screenshot: Bearbeitungsmodus mit OwnDPS-Dialog -->
@@ -35,7 +37,7 @@ OwnDPS reads all numbers from Blizzard's `C_DamageMeter` API. It does not use th
 
 ## Installation
 
-Download the zip from the [Releases](../../releases) page and extract it to `World of Warcraft\_retail_\Interface\AddOns\`.
+Install OwnDPS from [CurseForge](https://www.curseforge.com/wow/addons/owndps) (for example with the CurseForge app), or download the zip from the [Releases](../../releases) page and extract it to `World of Warcraft\_retail_\Interface\AddOns\`.
 
 ## Usage
 
@@ -75,13 +77,12 @@ Libraries are fetched by the [BigWigs packager](https://github.com/BigWigsMods/p
 
 ### Releases
 
-Pushing a tag `v*` (for example `v1.0.0`, test builds `v0.x.y-alpha.N` or `v0.x.y-beta.N`) starts `.github/workflows/release.yml`. It builds a zip with all libraries and publishes it as a GitHub release.
+Pushing a tag `v*` (for example `v1.0.0`, test builds `v0.x.y-alpha.N` or `v0.x.y-beta.N`) starts `.github/workflows/release.yml`. It builds a zip with all libraries, publishes it as a GitHub release and uploads it to [CurseForge](https://www.curseforge.com/wow/addons/owndps). The version shown in the game comes from the tag (`## Version: @project-version@` in `OwnDPS.toc`).
 
-**CurseForge upload (optional):** the workflow already passes `CF_API_TOKEN` to the packager. The packager only uploads to CurseForge when both a token and a project ID are present. Without them, only the GitHub release is created. To enable the upload:
+**CurseForge upload:** the project ID is set in `OwnDPS.toc` (`## X-Curse-Project-ID: 1709067`), and the workflow passes the Actions secret **`CF_API_TOKEN`** to the packager. The packager only uploads when both are present; without the secret (for example in a fork) only the GitHub release is created. To renew the token:
 
 1. Create an API token at <https://authors.curseforge.com/#/settings/api-tokens>.
-2. In the GitHub repository, add it as an Actions secret named **`CF_API_TOKEN`** (*Settings > Secrets and variables > Actions > New repository secret*).
-3. In `OwnDPS.toc`, replace the line `# ## X-Curse-Project-ID:` with `## X-Curse-Project-ID: <your project ID>`.
+2. In the GitHub repository, store it as the Actions secret **`CF_API_TOKEN`** (*Settings > Secrets and variables > Actions*).
 
 ## License
 

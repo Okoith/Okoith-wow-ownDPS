@@ -6,7 +6,7 @@
 ## Version: @project-version@
 ## SavedVariables: OwnDPSDB, OwnDPSDebugLog
 ## X-License: MIT
-# ## X-Curse-Project-ID:
+## X-Curse-Project-ID: 1709067
 
 embeds.xml
 
