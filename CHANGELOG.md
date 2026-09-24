@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.1
+
+- CurseForge project ID added, automatic uploads to CurseForge
+
 ## 1.0.0
 
 First stable release.
